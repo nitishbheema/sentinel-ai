@@ -1,0 +1,14 @@
+id: RULE-008
+name: Unusual Endpoint Process Activity
+description: Detects suspicious process spawning patterns such as cmd/powershell spawned by web servers or unexpected parent processes
+severity: CRITICAL
+category: Execution
+is_enabled: true
+time_window_seconds: 60
+threshold: 1
+mitre_technique_id: T1059
+version: "1.0"
+condition:
+  event_type: process_spawn
+  suspicious_binaries: [nc, ncat, netcat, bash, sh, powershell.exe, cmd.exe, certutil.exe, whoami]
+  parent_whitelist_violation: [nginx, apache2, httpd, python, node]

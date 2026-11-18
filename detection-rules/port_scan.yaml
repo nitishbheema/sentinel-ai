@@ -1,0 +1,14 @@
+id: RULE-002
+name: Port Scanning Detection
+description: Detects connection attempts across multiple destination ports from a single source host within a brief interval
+severity: MEDIUM
+category: Reconnaissance
+is_enabled: true
+time_window_seconds: 60
+threshold: 5
+mitre_technique_id: T1046
+version: "1.0"
+condition:
+  event_source: [zeek, network]
+  distinct_field: destination_port
+  group_by: [source_ip]

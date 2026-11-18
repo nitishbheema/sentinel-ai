@@ -1,0 +1,14 @@
+id: RULE-006
+name: Abnormal Authentication Behavior
+description: Detects successful authentication occurring immediately following repeated failures or unusual privilege escalation attempts
+severity: HIGH
+category: Initial Access
+is_enabled: true
+time_window_seconds: 180
+threshold: 1
+mitre_technique_id: T1078
+version: "1.0"
+condition:
+  event_type: auth_success
+  requires_prior: auth_failure
+  group_by: [username, host_id]

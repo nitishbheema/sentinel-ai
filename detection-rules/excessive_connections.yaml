@@ -1,0 +1,13 @@
+id: RULE-005
+name: Excessive Network Connection Attempts
+description: Detects rapid connection floods targeting an internal server indicative of denial of service or distributed sweep
+severity: MEDIUM
+category: Denial of Service
+is_enabled: true
+time_window_seconds: 60
+threshold: 15
+mitre_technique_id: T1499
+version: "1.0"
+condition:
+  event_type: [conn, zeek_conn]
+  group_by: [destination_ip]

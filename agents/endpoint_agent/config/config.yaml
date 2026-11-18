@@ -1,0 +1,32 @@
+agent:
+  id: "agent-linux-001"
+  hostname: "sec-lab-srv01"
+  version: "1.0.0"
+  backend_url: "http://127.0.0.1:8000/api/v1/events/ingest/endpoint"
+  shared_secret: "sentinel_agent_telemetry_secure_key_2026"
+  heartbeat_interval_seconds: 30
+  retry_limit: 5
+  spool_file: "./agent_spool.json"
+
+collectors:
+  auth:
+    enabled: true
+    interval_seconds: 15
+    sources:
+      - "/var/log/auth.log"
+      - "/var/log/secure"
+  process:
+    enabled: true
+    interval_seconds: 10
+    monitor_parents: true
+  network:
+    enabled: true
+    interval_seconds: 20
+    suspicious_ports: [4444, 5555, 6667, 8888, 9999, 1337, 31337]
+  file_integrity:
+    enabled: true
+    monitored_paths:
+      - "/etc/passwd"
+      - "/etc/shadow"
+      - "/etc/sudoers"
+      - "/etc/hosts"

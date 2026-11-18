@@ -1,0 +1,14 @@
+id: RULE-003
+name: Suspicious DNS Activity
+description: Detects abnormal DNS queries including dynamic DNS, fast-flux lookups, or excessive query volumes indicative of C2 communication
+severity: HIGH
+category: Command and Control
+is_enabled: true
+time_window_seconds: 120
+threshold: 3
+mitre_technique_id: T1071.004
+version: "1.0"
+condition:
+  event_type: [dns_query, zeek_dns]
+  suspicious_keywords: [tunnel, c2, ngrok, tor, duckdns, dynamic-dns]
+  group_by: [source_ip]

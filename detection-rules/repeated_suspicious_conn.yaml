@@ -1,0 +1,14 @@
+id: RULE-007
+name: Repeated Suspicious Connections
+description: Detects persistent beaconing or repeated connection attempts to non-standard high ports
+severity: MEDIUM
+category: Command and Control
+is_enabled: true
+time_window_seconds: 120
+threshold: 4
+mitre_technique_id: T1571
+version: "1.0"
+condition:
+  event_type: [network_conn, zeek_conn]
+  destination_port_above: 1024
+  group_by: [source_ip, destination_ip]

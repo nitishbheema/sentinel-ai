@@ -1,0 +1,96 @@
+{
+  "model_name": "Random Forest CICIDS2017 Classifier",
+  "model_type": "Supervised Ensemble Classifier",
+  "accuracy": 0.9725,
+  "precision": 0.9699,
+  "recall": 0.9725,
+  "f1_score": 0.97,
+  "false_positive_rate": 0.0,
+  "confusion_matrix": [
+    [
+      1577,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      17,
+      0,
+      0,
+      0,
+      47
+    ],
+    [
+      0,
+      0,
+      167,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      234,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      233,
+      0
+    ],
+    [
+      0,
+      19,
+      0,
+      0,
+      0,
+      106
+    ]
+  ],
+  "classes": [
+    "BENIGN",
+    "Botnet",
+    "BruteForce",
+    "DDoS",
+    "PortScan",
+    "WebAttack"
+  ],
+  "training_samples": 9600,
+  "test_samples": 2400,
+  "evaluation_dataset": "Calibrated CICIDS2017 Benchmark Dataset (Explicitly Labelled)",
+  "feature_importances": {
+    "fwd_pkt_len_max": 0.20946488673164484,
+    "fwd_pkt_len_min": 0.12906216719358576,
+    "tot_len_bwd_pkts": 0.12213477517528103,
+    "fwd_pkt_len_std": 0.08249671273602868,
+    "fwd_pkt_len_mean": 0.07103950824732914,
+    "tot_bwd_pkts": 0.06400653342767462,
+    "bwd_iat_tot": 0.05914396075731864,
+    "ack_flag_cnt": 0.05184534178004841,
+    "tot_len_fwd_pkts": 0.048091288880129514,
+    "tot_fwd_pkts": 0.03328802490542236,
+    "flow_byts_s": 0.02892009776341683,
+    "psh_flag_cnt": 0.023490840601419247,
+    "rst_flag_cnt": 0.01888049670680035,
+    "fwd_iat_tot": 0.01665554426029925,
+    "flow_duration": 0.014663880363695567,
+    "flow_pkts_s": 0.010366781930967255,
+    "destination_port": 0.008705207164642034,
+    "flow_iat_mean": 0.00774395137429649,
+    "syn_flag_cnt": 0.0
+  },
+  "isolation_forest_params": {
+    "n_estimators": 100,
+    "contamination": 0.08,
+    "trained_normal_samples": 6307
+  }
+}

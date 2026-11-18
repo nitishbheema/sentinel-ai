@@ -1,0 +1,15 @@
+id: RULE-004
+name: Unusual Outbound Traffic
+description: Detects abnormal volume of outbound bytes sent to an external destination indicative of data exfiltration
+severity: HIGH
+category: Exfiltration
+is_enabled: true
+time_window_seconds: 300
+threshold: 1
+min_bytes_out: 5000000
+mitre_technique_id: T1048
+version: "1.0"
+condition:
+  event_source: [zeek, network, endpoint]
+  direction: outbound
+  group_by: [source_ip, destination_ip]

@@ -1,0 +1,13 @@
+id: RULE-001
+name: Brute Force Login Detection
+description: Detects multiple failed authentication attempts within a short time window followed by potential credential abuse
+severity: HIGH
+category: Authentication
+is_enabled: true
+time_window_seconds: 60
+threshold: 4
+mitre_technique_id: T1110.001
+version: "1.0"
+condition:
+  event_type: auth_failure
+  group_by: [source_ip, username]

@@ -1,0 +1,51 @@
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: '/api/v1',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request interceptor to attach JWT access token
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('sentinel_access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => Promise.reject(error));
+
+// Response interceptor to handle token expiry / refresh
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      const refreshToken = localStorage.getItem('sentinel_refresh_token');
+      if (refreshToken) {
+        try {
+          const res = await axios.post('/api/v1/auth/refresh', {
+            refresh_token: refreshToken,
+          });
+          const newAccess = res.data.access_token;
+          localStorage.setItem('sentinel_access_token', newAccess);
+          originalRequest.headers.Authorization = `Bearer ${newAccess}`;
+          return api(originalRequest);
+        } catch (refreshErr) {
+          localStorage.removeItem('sentinel_access_token');
+          localStorage.removeItem('sentinel_refresh_token');
+          localStorage.removeItem('sentinel_user');
+          window.location.href = '/login';
+        }
+      } else {
+        localStorage.removeItem('sentinel_access_token');
+        localStorage.removeItem('sentinel_user');
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default api;
