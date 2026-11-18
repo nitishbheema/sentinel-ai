@@ -152,10 +152,40 @@ Upon database initialization, SentinelAI automatically provisions three pre-conf
    python agent.py
    ```
 
-### 5.2 Network Sensor Ingestion (Zeek & Suricata)
-Feed live network capture logs directly into SentinelAI:
-```bash
-python agents/network_sensor/zeek/collector.py --log /opt/zeek/logs/current/conn.log
-python agents/network_sensor/suricata/collector.py --log /var/log/suricata/eve.json
-```
-Both collectors automatically buffer logs, format events into SentinelAI schema, and handle network disconnections with exponential backoff.
+### 6. Cloud Deployment Guide (Oracle Cloud Always Free & Cloudflare Pages)
+
+### 6.1 Oracle Cloud Always Free VM Setup
+1. **Provision an Always Free VM** in the OCI Console:
+   - **Image**: Ubuntu 22.04 LTS or 24.04 LTS (Canonical Ubuntu).
+   - **Shape**: `VM.Standard.A1.Flex` (Ampere ARM, 2-4 OCPUs, 12-24 GB RAM) or `VM.Standard.E2.1.Micro` (AMD, 1 OCPU, 1 GB RAM).
+   - **Networking**: Assign a public IPv4 address and attach an SSH public key.
+2. **Configure Security Lists (VCN Firewall)**:
+   - Allow Ingress on Port 22 (SSH).
+   - Allow Ingress on Port 80 (HTTP / Certbot).
+   - Allow Ingress on Port 443 (HTTPS).
+3. **SSH into the VM and Install Docker**:
+   ```bash
+   sudo apt-get update && sudo apt-get install -y docker.io docker-compose-v2 git
+   sudo usermod -aG docker ubuntu
+   ```
+4. **Clone Repository & Launch Services**:
+   ```bash
+   git clone https://github.com/<your-username>/sentinel-ai.git /opt/sentinelai
+   cd /opt/sentinelai
+   cp .env.example .env
+   # Edit .env with production passwords
+   docker compose up -d --build
+   ```
+
+### 6.2 Cloudflare Pages Frontend Setup
+1. Navigate to **Cloudflare Dashboard $\to$ Workers & Pages $\to$ Create Application $\to$ Pages $\to$ Connect to Git**.
+2. Select repository `sentinel-ai`.
+3. Configure build settings:
+   - **Framework Preset**: `Vite`
+   - **Build command**: `npm run build`
+   - **Build output directory**: `dist`
+   - **Root directory**: `frontend`
+4. Configure Environment Variables:
+   - `VITE_API_BASE_URL`: `https://api.yourdomain.com/api/v1` (or your OCI VM public IP/domain)
+5. Click **Save and Deploy**. Cloudflare automatically provisions a free global SSL certificate and provides the public URL `https://sentinel-ai.pages.dev`.
+

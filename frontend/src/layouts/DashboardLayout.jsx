@@ -142,7 +142,7 @@ const DashboardLayout = () => {
               <span className="font-mono text-[11px] font-semibold">SOC ENGINE ONLINE</span>
             </div>
             <div className="hidden md:flex items-center gap-2 text-xs text-slate-400 font-mono">
-              <span>Host IP: <strong className="text-slate-200">127.0.0.1:8000</strong></span>
+              <span>Cluster: <strong className="text-slate-200">Cloud Active</strong></span>
               <span>•</span>
               <span>ML Model: <strong className="text-cyan-400">RandomForest v1.0 (97.2%)</strong></span>
             </div>
