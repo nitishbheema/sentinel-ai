@@ -3,7 +3,8 @@ agent:
   hostname: "sec-lab-srv01"
   version: "1.0.0"
   backend_url: "http://127.0.0.1:8000/api/v1/events/ingest/endpoint"
-  shared_secret: "sentinel_agent_telemetry_secure_key_2026"
+  # Set via environment variable SENTINEL_AGENT_SECRET or configure below
+  shared_secret: "CHANGE_ME_AGENT_SECRET_KEY"
   heartbeat_interval_seconds: 30
   retry_limit: 5
   spool_file: "./agent_spool.json"

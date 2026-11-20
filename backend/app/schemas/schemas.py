@@ -49,6 +49,18 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
 
+class AdminSetupRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    email: str
+    password: str = Field(..., min_length=12)
+
+
+class SetupStatusResponse(BaseModel):
+    setup_required: bool
+    user_count: int
+    message: str
+
+
 # ==================== Endpoint & Agent Schemas ====================
 
 class EndpointBase(BaseModel):

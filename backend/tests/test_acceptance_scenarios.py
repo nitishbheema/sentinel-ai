@@ -277,12 +277,12 @@ def test_scenario_10_failure_handling(client):
     Submit malformed events or invalid tokens.
     Expected: System handles failures gracefully, logs errors and does not silently lose data.
     """
-    # Missing required fields
+    # Missing required fields or unauthorized agent
     res = client.post(
         "/api/v1/events/ingest",
         json={"invalid_key": "bad_data"}
     )
-    assert res.status_code in [422, 400]
+    assert res.status_code in [401, 422, 400]
 
     # Non-existent incident
     res_404 = client.get(

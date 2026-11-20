@@ -39,13 +39,35 @@ SentinelAI defines three standard roles:
 
 ### 3.1 Authentication (`/auth`)
 
-#### `POST /auth/login`
-Authenticates a user and returns access and refresh tokens.
+#### `GET /auth/setup-status`
+Returns whether first-time administrator initialization is required.
+- **Success Response (200 OK)**:
+  ```json
+  {
+    "setup_required": false,
+    "user_count": 1,
+    "message": "Platform already provisioned."
+  }
+  ```
+
+#### `POST /auth/setup-admin`
+Provisions the initial root administrator account. Fails with 403 Forbidden once any user exists.
 - **Request Body**:
   ```json
   {
-    "username": "admin",
-    "password": "SentinelAdmin2026!"
+    "username": "secadmin",
+    "email": "admin@yourdomain.com",
+    "password": "SecurePassword1234!"
+  }
+  ```
+
+#### `POST /auth/login`
+Authenticates a user and returns access and refresh tokens. Rate-limited to 5 requests/min.
+- **Request Body**:
+  ```json
+  {
+    "username": "secadmin",
+    "password": "SecurePassword1234!"
   }
   ```
 - **Success Response (200 OK)**:

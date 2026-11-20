@@ -57,7 +57,9 @@ This document defines the production security controls, network isolation polici
   - `VIEWER`: Read-only access to dashboards, events, and metrics.
 
 ### 3.2 Agent & Sensor Authentication
-- Remote endpoint agents authenticate using pre-shared HMAC keys (`X-Agent-Key: sentinel_agent_telemetry_secure_key_2026`).
+- Remote endpoint agents authenticate using HMAC-SHA256 signatures (`X-Agent-Signature`) calculated over canonical request payloads.
+- Requests include a timestamp (`X-Agent-Timestamp`) validated against a 300-second window to prevent clock skew attacks.
+- Nonce replay protection (`X-Agent-Nonce`) tracks unique single-use identifiers to permanently prevent replay attacks.
 - All incoming payloads are validated against strict Pydantic schemas. Unrecognized or malformed telemetry is rejected with HTTP 422 before queue processing.
 
 ---

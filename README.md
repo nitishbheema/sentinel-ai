@@ -62,15 +62,15 @@ SentineIAI/
 
 ---
 
-## Default Access Credentials
+## Secure First-Time Administrator Setup
 
-The initial database seed provisions three standard testing accounts:
+SentinelAI implements zero default credentials. When launched with a fresh database, the platform detects that no users exist and opens the First-Time Administrator Initialization interface:
 
-| Username | Password | Role | Scope |
-| :--- | :--- | :--- | :--- |
-| `admin` | `SentinelAdmin2026!` | `ADMIN` | Full administrative control and containment approval |
-| `analyst` | `SentinelAnalyst2026!` | `ANALYST` | Incident triage, investigation notes, and containment requests |
-| `viewer` | `SentinelViewer2026!` | `VIEWER` | Read-only access to dashboards, alerts, and metrics |
+1. **Web UI Setup**: Navigate to `http://localhost:5173` (or your deployed domain). The platform will present the root administrator setup screen.
+2. **Password Policy**: Credentials must meet enterprise complexity standards (minimum 12 characters, uppercase, lowercase, numbers, and special symbols).
+3. **Environment Bootstrap (Optional)**: In headless or automated deployments, set `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD` in your `.env` file before server startup.
+
+Once the initial administrator is created, first-time setup is permanently locked against further execution. Subsequent user accounts (`ANALYST`, `VIEWER`) are provisioned exclusively by the authenticated administrator.
 
 ---
 
@@ -80,11 +80,15 @@ The initial database seed provisions three standard testing accounts:
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/sentinelai.git
-cd sentinelai
+git clone https://github.com/nitishbheema/sentinel-ai.git
+cd sentinel-ai
+
+# Configure production environment variables from template
+cp .env.example .env
+# Edit .env and supply secure secrets for SECRET_KEY, POSTGRES_PASSWORD, REDIS_PASSWORD, AGENT_SHARED_SECRET
 
 # Start containers
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 - Frontend: `http://localhost`

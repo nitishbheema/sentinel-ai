@@ -30,7 +30,7 @@ mkdir -p "${BACKUP_DIR}"
 echo "[$(date)] Starting SentinelAI PostgreSQL backup..."
 
 # Dump database through Docker exec
-docker exec -t sentinelai_postgres pg_dump -U sentinel_user -d sentinelai_db | gzip > "${BACKUP_FILE}"
+docker exec -t sentinelai_postgres pg_dump -U "${POSTGRES_USER:-sentinel_user}" -d "${POSTGRES_DB:-sentinelai_db}" | gzip > "${BACKUP_FILE}"
 
 echo "[$(date)] Backup completed: ${BACKUP_FILE} ($(du -h "${BACKUP_FILE}" | cut -f1))"
 
@@ -61,7 +61,7 @@ To restore the SentinelAI database from a compressed backup:
    BACKUP_ARCHIVE="/opt/sentinelai/backups/postgres/sentinelai_db_YYYYMMDD_HHMMSS.sql.gz"
    
    # Decompress and feed into container
-   gunzip -c "${BACKUP_ARCHIVE}" | docker exec -i sentinelai_postgres psql -U sentinel_user -d sentinelai_db
+   gunzip -c "${BACKUP_ARCHIVE}" | docker exec -i sentinelai_postgres psql -U "${POSTGRES_USER:-sentinel_user}" -d "${POSTGRES_DB:-sentinelai_db}"
    ```
 
 3. **Run database migrations to ensure schema alignment**:

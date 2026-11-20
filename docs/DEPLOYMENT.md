@@ -121,18 +121,14 @@ For rapid development and local testing in environments without Docker:
 
 ---
 
-## 4. Default Credentials & Initial Accounts
+## 4. Secure Initial Administrator Provisioning
 
-Upon database initialization, SentinelAI automatically provisions three pre-configured accounts:
+SentinelAI enforces a zero default credentials policy:
 
-| Username | Password | Role | Description |
-| :--- | :--- | :--- | :--- |
-| **`admin`** | `SentinelAdmin2026!` | `ADMIN` | Platform administrator with rule editing and containment approval permissions. |
-| **`analyst`** | `SentinelAnalyst2026!` | `ANALYST` | SOC investigator with incident management and alert triage permissions. |
-| **`viewer`** | `SentinelViewer2026!` | `VIEWER` | Read-only executive with access to dashboards and metrics. |
-
-> [!WARNING]
-> Change these default passwords immediately upon deployment in production or shared network environments.
+1. **First-Time Setup**: On initial launch with an empty database, accessing the Web UI (`http://localhost:5173`) automatically activates the First-Time Administrator Initialization prompt.
+2. **Password Complexity**: Passwords must contain a minimum of 12 characters including uppercase, lowercase, numbers, and special symbols.
+3. **Automated Provisioning**: For unattended CI or container deployments, provide `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD` in your `.env` file.
+4. **Post-Initialization Security**: Once provisioned, the setup endpoint is permanently locked against further execution. Additional users (`ANALYST`, `VIEWER`) are created via the authenticated User Management portal.
 
 ---
 

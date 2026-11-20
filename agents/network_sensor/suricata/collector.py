@@ -28,10 +28,14 @@ class SuricataCollector:
                 data = json.loads(line)
                 # Only ingest alert events or flow events
                 if data.get("event_type") == "alert" or "alert" in data:
+                    secret = os.environ.get("SENTINEL_AGENT_SECRET", "")
+                    headers = {"Content-Type": "application/json"}
+                    if secret:
+                        headers["X-Agent-Secret"] = secret
                     resp = requests.post(
                         self.backend_url,
                         json=data,
-                        headers={"X-Agent-Secret": "sentinel_agent_telemetry_secure_key_2026"},
+                        headers=headers,
                         timeout=3
                     )
                     if resp.status_code in [200, 201]:

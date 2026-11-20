@@ -111,6 +111,10 @@ class MLInferenceEngine:
                 "feature_contributions": {}
             }
 
+        # Input validation and bounds checking: sanitize NaN, Inf, and abnormal spikes
+        feature_vector = np.nan_to_num(feature_vector, nan=0.0, posinf=1e7, neginf=0.0)
+        feature_vector = np.clip(feature_vector, -1e8, 1e8)
+
         # Preprocess using training scaler
         scaled_features = self.scaler.transform(feature_vector)
 

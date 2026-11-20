@@ -59,10 +59,14 @@ class ZeekCollector:
             event = self.parse_line(line)
             if event:
                 try:
+                    secret = os.environ.get("SENTINEL_AGENT_SECRET", "")
+                    headers = {"Content-Type": "application/json"}
+                    if secret:
+                        headers["X-Agent-Secret"] = secret
                     resp = requests.post(
                         self.backend_url,
                         json=event,
-                        headers={"X-Agent-Secret": "sentinel_agent_telemetry_secure_key_2026"},
+                        headers=headers,
                         timeout=3
                     )
                     if resp.status_code in [200, 201]:

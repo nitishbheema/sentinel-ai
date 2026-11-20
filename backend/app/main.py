@@ -1,13 +1,18 @@
+import logging
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.database.session import engine, Base, SessionLocal
 from app.models.models import User, DetectionRule, ThreatIndicator, Endpoint
-from app.core.security import get_password_hash
+from app.core.security import get_password_hash, validate_password_strength
 from app.api.v1.api import api_router
 from app.detection.engine import rule_engine
 from app.threat_intelligence.matcher import seed_sample_indicators
+
+# Configure logger
+logger = logging.getLogger("sentinelai")
+logging.basicConfig(level=logging.INFO if not settings.DEBUG else logging.DEBUG)
 
 # Create Database tables
 Base.metadata.create_all(bind=engine)
@@ -16,9 +21,9 @@ app = FastAPI(
     title="SentinelAI — Threat Detection & Automated SOC Platform",
     description="Intelligent enterprise cybersecurity monitoring, machine learning intrusion detection, and incident response platform.",
     version="1.0.0",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json"
+    docs_url="/api/docs" if settings.DEBUG or settings.ENVIRONMENT != "production" else None,
+    redoc_url="/api/redoc" if settings.DEBUG or settings.ENVIRONMENT != "production" else None,
+    openapi_url="/api/openapi.json" if settings.DEBUG or settings.ENVIRONMENT != "production" else None
 )
 
 # CORS Middleware
@@ -35,24 +40,26 @@ app.add_middleware(
 def on_startup():
     db = SessionLocal()
     try:
-        # 1. Seed Initial Users if not existing
-        users_to_seed = [
-            ("admin", "admin@sentinelai.local", "SentinelAdmin2026!", "ADMIN"),
-            ("analyst", "analyst@sentinelai.local", "SentinelAnalyst2026!", "ANALYST"),
-            ("viewer", "viewer@sentinelai.local", "SentinelViewer2026!", "VIEWER"),
-        ]
-        for uname, uemail, upass, urole in users_to_seed:
-            existing = db.query(User).filter(User.username == uname).first()
-            if not existing:
-                new_user = User(
-                    username=uname,
-                    email=uemail,
-                    hashed_password=get_password_hash(upass),
-                    role=urole,
-                    is_active=True
-                )
-                db.add(new_user)
-        db.commit()
+        # 1. Check if initial administrator should be bootstrapped from environment
+        user_count = db.query(User).count()
+        if user_count == 0:
+            if settings.INITIAL_ADMIN_USERNAME and settings.INITIAL_ADMIN_PASSWORD:
+                is_strong, reason = validate_password_strength(settings.INITIAL_ADMIN_PASSWORD)
+                if is_strong:
+                    admin_user = User(
+                        username=settings.INITIAL_ADMIN_USERNAME.strip(),
+                        email=(settings.INITIAL_ADMIN_EMAIL or "admin@sentinelai.local").strip().lower(),
+                        hashed_password=get_password_hash(settings.INITIAL_ADMIN_PASSWORD),
+                        role="ADMIN",
+                        is_active=True
+                    )
+                    db.add(admin_user)
+                    db.commit()
+                    logger.info("[SentinelAI] Initial administrator provisioned from environment variables.")
+                else:
+                    logger.warning(f"[SentinelAI] INITIAL_ADMIN_PASSWORD does not meet complexity requirements: {reason}. Skipping auto-provisioning.")
+            else:
+                logger.info("[SentinelAI] No initial administrator configured in environment. First-time setup required via UI/API.")
 
         # 2. Seed Detection Rules from disk
         rule_engine.sync_rules_to_db(db)
@@ -60,7 +67,7 @@ def on_startup():
         # 3. Seed Threat Intelligence Indicators
         seed_sample_indicators(db)
 
-        # 4. Seed initial endpoints
+        # 4. Seed initial endpoints if empty
         if db.query(Endpoint).count() == 0:
             seed_eps = [
                 Endpoint(hostname="sec-lab-srv01", ip_address="192.168.1.10", os_type="linux", os_version="Ubuntu 22.04 LTS", status="ACTIVE", agent_version="1.0.0"),
@@ -71,7 +78,7 @@ def on_startup():
             db.add_all(seed_eps)
             db.commit()
 
-        print("[SentinelAI] Startup initialization completed successfully.")
+        logger.info("[SentinelAI] Startup initialization completed successfully.")
     finally:
         db.close()
 

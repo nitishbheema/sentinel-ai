@@ -244,3 +244,13 @@ class AuditLog(Base):
     timestamp = Column(DateTime, default=utc_now, index=True, nullable=False)
 
     user = relationship("User", back_populates="audit_logs")
+
+
+class RevokedToken(Base):
+    __tablename__ = "revoked_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    jti = Column(String(255), unique=True, index=True, nullable=False)
+    token_type = Column(String(50), default="access", nullable=False)
+    revoked_at = Column(DateTime, default=utc_now, nullable=False)
+    expires_at = Column(DateTime, nullable=False)

@@ -18,8 +18,11 @@ class EndpointAgent:
         self.hostname = self.config.get("agent", {}).get("hostname", socket.gethostname())
         self.ip_address = self._get_local_ip()
         
-        backend_url = self.config.get("agent", {}).get("backend_url", "http://127.0.0.1:8000/api/v1/events/ingest/endpoint")
-        secret = self.config.get("agent", {}).get("shared_secret", "sentinel_agent_telemetry_secure_key_2026")
+        backend_url = os.environ.get("SENTINEL_BACKEND_URL") or self.config.get("agent", {}).get("backend_url", "http://127.0.0.1:8000/api/v1/events/ingest/endpoint")
+        secret = os.environ.get("SENTINEL_AGENT_SECRET") or self.config.get("agent", {}).get("shared_secret")
+        if not secret:
+            print("[SentinelAgent] WARNING: No agent shared secret configured. Set SENTINEL_AGENT_SECRET environment variable or configure config.yaml.")
+            secret = ""
         self.sender = TelemetrySender(backend_url, secret)
 
         # Initialize collectors

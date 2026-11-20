@@ -134,26 +134,16 @@ const Settings = () => {
           <div className="bg-[#111827] border border-[#1f293d] rounded-xl p-5 shadow-lg">
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-200 mb-3 flex items-center gap-2">
               <Key className="w-4 h-4 text-cyan-400" />
-              <span>Endpoint Agent Shared Secret</span>
+              <span>Endpoint Agent Authentication Policy</span>
             </h2>
             <p className="text-xs text-slate-400 font-mono mb-3">
-              Telemetry intake API secret required in the <code className="text-slate-200">X-Agent-Secret</code> header:
+              Telemetry intake enforces HMAC-SHA256 signatures with nonce replay protection:
             </p>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                readOnly
-                value="sentinel_agent_telemetry_secure_key_2026"
-                className="w-full bg-[#141d2d] border border-[#1b2538] rounded-lg p-2 font-mono text-xs text-cyan-400 select-all"
-              />
-              <button
-                type="button"
-                onClick={handleCopyKey}
-                className="px-3 py-2 bg-[#162032] border border-[#223049] hover:text-cyan-400 rounded-lg text-xs font-mono transition flex items-center gap-1 shrink-0"
-              >
-                {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                <span>{copied ? 'Copied' : 'Copy'}</span>
-              </button>
+            <div className="bg-[#141d2d] border border-[#1b2538] rounded-lg p-3 font-mono text-xs text-slate-300 space-y-1">
+              <div><span className="text-slate-400">Header:</span> <span className="text-cyan-400">X-Agent-Signature</span> (HMAC-SHA256)</div>
+              <div><span className="text-slate-400">Timestamp:</span> <span className="text-cyan-400">X-Agent-Timestamp</span> (Window: ±300s)</div>
+              <div><span className="text-slate-400">Replay Protection:</span> <span className="text-cyan-400">X-Agent-Nonce</span> (Single-use UUID)</div>
+              <div><span className="text-slate-400">Key Configuration:</span> <span className="text-emerald-400">Environment variable AGENT_SHARED_SECRET</span></div>
             </div>
           </div>
 

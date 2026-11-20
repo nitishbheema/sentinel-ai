@@ -30,22 +30,21 @@ Base.metadata.create_all(bind=engine)
 def seed():
     db = SessionLocal()
     try:
-        print("[SentinelSeed] Seeding Users...")
-        users = [
-            ("admin", "admin@sentinelai.local", "SentinelAdmin2026!", "ADMIN"),
-            ("analyst", "analyst@sentinelai.local", "SentinelAnalyst2026!", "ANALYST"),
-            ("viewer", "viewer@sentinelai.local", "SentinelViewer2026!", "VIEWER"),
-        ]
-        for u, e, p, r in users:
-            if not db.query(User).filter(User.username == u).first():
+        print("[SentinelSeed] Checking administrator provisioning...")
+        if db.query(User).count() == 0:
+            seed_pass = os.getenv("SEED_ADMIN_PASSWORD")
+            if seed_pass:
                 db.add(User(
-                    username=u,
-                    email=e,
-                    hashed_password=get_password_hash(p),
-                    role=r,
+                    username="admin",
+                    email="admin@sentinelai.local",
+                    hashed_password=get_password_hash(seed_pass),
+                    role="ADMIN",
                     is_active=True
                 ))
-        db.commit()
+                db.commit()
+                print("[SentinelSeed] Administrator created from SEED_ADMIN_PASSWORD.")
+            else:
+                print("[SentinelSeed] No SEED_ADMIN_PASSWORD provided. First-time setup available via /setup-admin.")
 
         # Load rules & threat indicators
         rule_engine.sync_rules_to_db(db)
