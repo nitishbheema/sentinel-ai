@@ -2,12 +2,16 @@ import os
 import re
 import time
 import uuid
+import logging
 import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any, Union, Optional, Dict, List
 import jwt
 from passlib.context import CryptContext
 from app.core.config import settings
+from app.core.redis import get_redis_client
+
+logger = logging.getLogger("sentinelai.security")
 
 # Configure password hashing with Argon2 and bcrypt
 pwd_context = CryptContext(
@@ -104,7 +108,7 @@ def decode_token(token: str) -> Optional[dict]:
         return None
 
 
-# Rate limiter for authentication & setup endpoints
+# Rate limiter for authentication & setup endpoints with Redis persistence and in-memory fallback
 class AuthRateLimiter:
     def __init__(self, max_requests: int = 5, window_seconds: int = 60):
         self.max_requests = max_requests
@@ -113,11 +117,32 @@ class AuthRateLimiter:
         self.lock = threading.Lock()
 
     def is_rate_limited(self, key: str) -> tuple[bool, int]:
+        redis_client = get_redis_client()
+        if redis_client:
+            try:
+                redis_key = f"sentinel:ratelimit:{key}"
+                pipe = redis_client.pipeline()
+                pipe.incr(redis_key)
+                pipe.ttl(redis_key)
+                results = pipe.execute()
+                count = results[0]
+                ttl = results[1]
+
+                if count == 1:
+                    redis_client.expire(redis_key, self.window_seconds)
+
+                if count > self.max_requests:
+                    retry_after = ttl if ttl > 0 else self.window_seconds
+                    return True, retry_after
+                return False, 0
+            except Exception as e:
+                logger.warning(f"[AuthRateLimiter] Redis rate limiting error: {e}. Falling back to memory.")
+
+        # In-memory sliding window fallback
         now = time.time()
         with self.lock:
             if key not in self.attempts:
                 self.attempts[key] = []
-            # Keep only attempts within window
             self.attempts[key] = [t for t in self.attempts[key] if now - t < self.window_seconds]
             if len(self.attempts[key]) >= self.max_requests:
                 oldest = self.attempts[key][0]
@@ -127,6 +152,13 @@ class AuthRateLimiter:
             return False, 0
 
     def reset(self, key: str):
+        redis_client = get_redis_client()
+        if redis_client:
+            try:
+                redis_client.delete(f"sentinel:ratelimit:{key}")
+            except Exception:
+                pass
+
         with self.lock:
             if key in self.attempts:
                 del self.attempts[key]

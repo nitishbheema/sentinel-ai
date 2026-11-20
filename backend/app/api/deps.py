@@ -1,6 +1,7 @@
 import time
 import hmac
 import hashlib
+import logging
 import threading
 from typing import Generator, Optional, List, Dict
 from datetime import datetime, timezone
@@ -10,11 +11,13 @@ from sqlalchemy.orm import Session
 from app.database.session import SessionLocal
 from app.core.security import decode_token
 from app.core.config import settings
+from app.core.redis import get_redis_client
 from app.models.models import User, AuditLog, RevokedToken
 
+logger = logging.getLogger("sentinelai.deps")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login", auto_error=False)
 
-# In-memory replay protection cache for agent nonces
+# In-memory replay protection fallback cache for agent nonces
 _nonce_lock = threading.Lock()
 _seen_nonces: Dict[str, float] = {}
 
@@ -105,7 +108,7 @@ async def verify_agent_token(
     x_agent_secret: Optional[str] = Header(None)
 ) -> bool:
     """
-    Validates agent telemetry with HMAC signature, timestamp window, and nonce replay check.
+    Validates agent telemetry with HMAC signature, timestamp window, and Redis-backed atomic nonce replay check.
     Supports backward-compatible secret matching in development/test mode.
     """
     now = time.time()
@@ -127,15 +130,38 @@ async def verify_agent_token(
                 detail="Agent timestamp expired or clock skew too high (must be within 300s)",
             )
 
-        # 2. Enforce Replay Protection via Nonce check
-        _cleanup_old_nonces(max_age_seconds=600)
-        with _nonce_lock:
-            if x_agent_nonce in _seen_nonces:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Replay attack detected: nonce has already been processed",
-                )
-            _seen_nonces[x_agent_nonce] = now
+        # 2. Enforce Atomic Replay Protection via Redis (with in-memory fallback)
+        redis_client = get_redis_client()
+        if redis_client:
+            try:
+                redis_key = f"sentinel:agent_nonce:{x_agent_nonce}"
+                acquired = redis_client.set(redis_key, "1", ex=600, nx=True)
+                if not acquired:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Replay attack detected: nonce has already been processed",
+                    )
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.warning(f"[verify_agent_token] Redis nonce verification failed: {e}. Falling back to memory.")
+                _cleanup_old_nonces(max_age_seconds=600)
+                with _nonce_lock:
+                    if x_agent_nonce in _seen_nonces:
+                        raise HTTPException(
+                            status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Replay attack detected: nonce has already been processed",
+                        )
+                    _seen_nonces[x_agent_nonce] = now
+        else:
+            _cleanup_old_nonces(max_age_seconds=600)
+            with _nonce_lock:
+                if x_agent_nonce in _seen_nonces:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Replay attack detected: nonce has already been processed",
+                    )
+                _seen_nonces[x_agent_nonce] = now
 
         # 3. Compute and verify HMAC-SHA256 signature
         body_bytes = await request.body()

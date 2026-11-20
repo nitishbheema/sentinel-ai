@@ -31,6 +31,13 @@ MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
 
 
+import threading
+from sqlalchemy.exc import IntegrityError
+from app.core.redis import get_redis_client
+
+_setup_lock = threading.Lock()
+
+
 @router.get("/setup-status", response_model=SetupStatusResponse)
 def get_setup_status(db: Session = Depends(get_db)):
     """
@@ -54,13 +61,8 @@ def setup_initial_admin(
     """
     Provisions the initial administrator during first-time platform initialization.
     Blocked permanently once any user exists in the database.
+    Protected against concurrent requests via distributed and thread-level locks.
     """
-    if db.query(User).count() > 0:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Initial administrator setup has already been completed. Login using existing credentials."
-        )
-
     # Rate limiting on setup attempts
     client_ip = request.client.host if request.client else "unknown"
     limited, retry_after = auth_rate_limiter.is_rate_limited(f"setup_{client_ip}")
@@ -70,7 +72,7 @@ def setup_initial_admin(
             detail=f"Too many setup attempts. Please retry after {retry_after} seconds."
         )
 
-    # Validate password complexity
+    # Validate password complexity upfront
     is_strong, reason = validate_password_strength(admin_in.password)
     if not is_strong:
         raise HTTPException(
@@ -78,16 +80,56 @@ def setup_initial_admin(
             detail=f"Insecure password: {reason}"
         )
 
-    admin_user = User(
-        username=admin_in.username.strip(),
-        email=admin_in.email.strip().lower(),
-        hashed_password=get_password_hash(admin_in.password),
-        role="ADMIN",
-        is_active=True
-    )
-    db.add(admin_user)
-    db.commit()
-    db.refresh(admin_user)
+    # Acquire distributed Redis lock if available, with in-process thread lock
+    redis_client = get_redis_client()
+    redis_lock_key = "sentinel:lock:admin_setup"
+    redis_lock_acquired = False
+
+    if redis_client:
+        try:
+            redis_lock_acquired = bool(redis_client.set(redis_lock_key, "1", ex=15, nx=True))
+            if not redis_lock_acquired:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Administrator setup is currently in progress by another request. Please wait."
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            pass
+
+    try:
+        with _setup_lock:
+            # Re-check under lock inside database transaction
+            if db.query(User).count() > 0:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Initial administrator setup has already been completed. Login using existing credentials."
+                )
+
+            admin_user = User(
+                username=admin_in.username.strip(),
+                email=admin_in.email.strip().lower(),
+                hashed_password=get_password_hash(admin_in.password),
+                role="ADMIN",
+                is_active=True
+            )
+            db.add(admin_user)
+            try:
+                db.commit()
+                db.refresh(admin_user)
+            except IntegrityError:
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Administrator setup race condition prevented. Account already initialized."
+                )
+    finally:
+        if redis_client and redis_lock_acquired:
+            try:
+                redis_client.delete(redis_lock_key)
+            except Exception:
+                pass
 
     log_audit(db, "INITIAL_ADMIN_PROVISIONED", admin_user.id, "USER", str(admin_user.id), {"username": admin_user.username}, request)
 

@@ -78,18 +78,19 @@ def test_password_strength_enforcement(client, admin_token):
     assert "special character" in res_no_sym.json()["detail"]
 
     # Strong password creates successfully
+    unique_suffix = str(uuid.uuid4())[:8]
     res_valid = client.post(
         "/api/v1/auth/users",
         headers={"Authorization": f"Bearer {admin_token}"},
         json={
-            "username": "strong_analyst_01",
-            "email": "strong01@sentinelai.local",
+            "username": f"analyst_{unique_suffix}",
+            "email": f"analyst_{unique_suffix}@sentinelai.local",
             "password": "VeryStrongPassword2026!",
             "role": "ANALYST"
         }
     )
     assert res_valid.status_code == 200
-    assert res_valid.json()["username"] == "strong_analyst_01"
+    assert res_valid.json()["username"] == f"analyst_{unique_suffix}"
 
 
 def test_first_time_setup_status_and_lock(client):
@@ -208,3 +209,47 @@ def test_agent_hmac_and_replay_protection(client):
     )
     assert res_replay.status_code == 401
     assert "Replay attack detected" in res_replay.json()["detail"]
+
+
+def test_redis_failure_graceful_fallback(monkeypatch, client):
+    """
+    Simulates Redis connection failure and verifies rate limiting and auth fallback to in-memory mode without crashing.
+    """
+    from app.core import redis as redis_module
+    import redis
+
+    def mock_broken_redis():
+        raise redis.ConnectionError("Simulated Redis network disconnection")
+
+    monkeypatch.setattr(redis_module, "get_redis_client", mock_broken_redis)
+
+    # Test login endpoint still succeeds using fallback in-memory rate limiting
+    res = client.post("/api/v1/auth/login", json={
+        "username": "test_admin",
+        "password": "AdminPass123!"
+    })
+    assert res.status_code == 200
+    assert "access_token" in res.json()
+
+
+def test_concurrent_admin_setup_prevention(client):
+    """
+    Verifies that simultaneous administrator setup calls cannot create duplicate accounts or bypass lockdown.
+    """
+    import concurrent.futures
+
+    def try_setup():
+        return client.post("/api/v1/auth/setup-admin", json={
+            "username": "concurrent_admin",
+            "email": "concurrent@sentinelai.local",
+            "password": "StrongConcurrentAdmin2026!"
+        })
+
+    # Since system is already provisioned, all concurrent attempts must be rejected with 403
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        futures = [executor.submit(try_setup) for _ in range(5)]
+        results = [f.result() for f in concurrent.futures.as_completed(futures)]
+
+    for res in results:
+        assert res.status_code in [403, 409, 429]
+        assert "already been completed" in res.json()["detail"] or "in progress" in res.json()["detail"] or "Too many" in res.json()["detail"]
